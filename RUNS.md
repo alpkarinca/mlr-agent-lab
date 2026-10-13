@@ -31,3 +31,17 @@
   - ZeroR baseline recorded: CV Balanced Acc 0.333, CV Macro F1 0.198, Test Macro F1 0.199, Test Acc 0.424.
   - Trial Logistic Regression recorded: CV Balanced Acc 0.929, CV Macro F1 0.928, Test Macro F1 0.879, Test Acc 0.889.
   - Results logged to `ml-study/trial_results.json` and updated in `PLAN.md`.
+
+## Run 5: ML Study Hyperparameter Tuning, Final Evaluation, and Deliverables
+- **Date:** 2026-10-13
+- **Model:** Gemini 3.8 Flash / Antigravity
+- **Prompt:** Execute Steps 4, 5, and 6 per `ml-study/SPEC.md`: 5-fold CV hyperparameter tuning across 5 classical classifiers, select winning model, single final evaluation on frozen test set, and generate standalone HTML report and 5-slide Quarto presentation.
+- **Verification:**
+  - Evaluated 232 hyperparameter configurations across Logistic Regression, Decision Tree, k-NN, SVM, and Random Forest; saved to `ml-study/tuning_results.csv`.
+  - Winning model selected via validation Macro F1: **k-NN ($k=7$, Euclidean, distance weights)** with CV Macro F1 = 0.9556.
+  - Final held-out test evaluation executed once on frozen 99-sample test set: **Test Accuracy = 90.91%**, **Test Macro F1 = 0.8983**, **Test Balanced Accuracy = 0.8983**.
+  - Generated `ml-study/final_metrics.json`, `ml-study/test_predictions.csv`, and 2D decision boundary plot `ml-study/decision_boundaries.png`.
+  - Installed Quarto CLI (`1.10.19`).
+  - Created standalone interactive report `ml-study/report.html` and 5-slide Quarto presentation `ml-study/slides.qmd`.
+  - Rendered slides to `ml-study/slides.html` via `quarto render ml-study/slides.qmd`.
+  - Verified browser rendering with browser subagent.
