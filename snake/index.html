@@ -1,0 +1,514 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Snake Arcade — Shrinking Arena</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;800&display=swap');
+
+  *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+  :root {
+    --bg: #0b0e17;
+    --panel: #131827;
+    --border: #1e2540;
+    --accent: #7c5cfc;
+    --accent-glow: rgba(124, 92, 252, .35);
+    --food: #ff5c87;
+    --snake-head: #6ee7b7;
+    --text: #e2e8f0;
+    --text-dim: #94a3b8;
+  }
+
+  html, body {
+    width: 100%; height: 100%;
+    background: var(--bg);
+    font-family: 'Outfit', system-ui, sans-serif;
+    color: var(--text);
+    display: flex; align-items: center; justify-content: center;
+    overflow: hidden;
+  }
+
+  #game-wrapper {
+    display: flex; flex-direction: column; align-items: center; gap: 16px;
+  }
+
+  /* ── HUD ── */
+  #hud {
+    width: 100%; max-width: 520px;
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 0 4px;
+  }
+  #hud .label {
+    font-size: .75rem; text-transform: uppercase;
+    letter-spacing: .1em; color: var(--text-dim);
+  }
+  #hud .value { font-size: 1.6rem; font-weight: 800; }
+  #score-value { color: var(--accent); }
+  #best-value  { color: var(--snake-head); }
+
+  /* ── Canvas ── */
+  #canvas-wrap {
+    position: relative;
+    border-radius: 14px;
+    border: 2px solid var(--border);
+    box-shadow: 0 0 60px rgba(124,92,252,.08),
+                inset 0 0 40px rgba(0,0,0,.4);
+    overflow: hidden;
+    background: var(--panel);
+  }
+  canvas { display: block; }
+
+  /* ── Overlay ── */
+  #overlay {
+    position: absolute; inset: 0;
+    background: rgba(11,14,23,.88);
+    backdrop-filter: blur(6px);
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    gap: 14px;
+    transition: opacity .3s;
+    z-index: 10;
+  }
+  #overlay.hidden { opacity: 0; pointer-events: none; }
+  #overlay h1 { font-size: 2rem; font-weight: 800; letter-spacing: .04em; }
+  #overlay p  {
+    color: var(--text-dim); font-size: .95rem;
+    max-width: 280px; text-align: center; line-height: 1.5;
+  }
+  .game-over-title { color: var(--food) !important; }
+  .final-score {
+    font-size: 3rem; font-weight: 800; color: var(--accent);
+  }
+  .hint { font-size: .8rem; color: var(--text-dim); margin-top: 6px; }
+
+  #play-btn {
+    margin-top: 8px; padding: 12px 36px;
+    border: none; border-radius: 10px;
+    background: linear-gradient(135deg, var(--accent), #9f7afa);
+    color: #fff; font-family: inherit;
+    font-weight: 700; font-size: 1rem;
+    cursor: pointer; letter-spacing: .04em;
+    box-shadow: 0 4px 24px var(--accent-glow);
+    transition: transform .15s, box-shadow .15s;
+  }
+  #play-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 32px var(--accent-glow);
+  }
+  #play-btn:active { transform: scale(.97); }
+
+  /* ── Mobile d-pad ── */
+  #mobile-controls { display: none; gap: 6px; margin-top: 8px; }
+  @media (hover: none) and (pointer: coarse) {
+    #mobile-controls {
+      display: grid;
+      grid-template-columns: repeat(3, 56px);
+      grid-template-rows: repeat(2, 56px);
+      justify-content: center;
+    }
+  }
+  .d-btn {
+    width: 56px; height: 56px;
+    border: 1.5px solid var(--border); border-radius: 12px;
+    background: var(--panel); color: var(--text);
+    font-size: 1.3rem; display: flex;
+    align-items: center; justify-content: center;
+    cursor: pointer; user-select: none;
+  }
+  .d-btn:active { background: var(--accent); }
+  #btn-up    { grid-column: 2; }
+  #btn-left  { grid-column: 1; grid-row: 2; }
+  #btn-down  { grid-column: 2; grid-row: 2; }
+  #btn-right { grid-column: 3; grid-row: 2; }
+</style>
+</head>
+<body>
+
+<div id="game-wrapper">
+  <div id="hud">
+    <div>
+      <div class="label">Score</div>
+      <div class="value" id="score-value">0</div>
+    </div>
+    <div style="text-align:right">
+      <div class="label">Best</div>
+      <div class="value" id="best-value">0</div>
+    </div>
+  </div>
+
+  <div id="canvas-wrap">
+    <canvas id="c"></canvas>
+    <div id="overlay">
+      <h1 id="overlay-title">🧊 Shrinking Arena</h1>
+      <p id="overlay-msg">The walls close in every 10 points.<br>Arrow keys or WASD to move. Survive!</p>
+      <button id="play-btn">Play</button>
+      <span class="hint" id="overlay-hint"></span>
+    </div>
+  </div>
+
+  <div id="mobile-controls">
+    <button class="d-btn" id="btn-up" aria-label="Up">▲</button>
+    <button class="d-btn" id="btn-left" aria-label="Left">◀</button>
+    <button class="d-btn" id="btn-down" aria-label="Down">▼</button>
+    <button class="d-btn" id="btn-right" aria-label="Right">▶</button>
+  </div>
+</div>
+
+<script>
+(() => {
+  /* ════════════════════════════════════════════════
+     Configuration
+     ════════════════════════════════════════════════ */
+  const COLS = 26, ROWS = 26, CELL = 20;
+  const WIDTH = COLS * CELL, HEIGHT = ROWS * CELL;
+  const BASE_INTERVAL = 115;   // ms per tick at start
+  const MIN_INTERVAL  = 55;    // fastest speed cap
+  const SPEED_STEP    = 2;     // ms faster per food eaten
+  const SHRINK_EVERY  = 10;    // shrink arena every N points
+  const MIN_ARENA     = 6;     // smallest arena dimension allowed
+
+  /* ════════════════════════════════════════════════
+     DOM references
+     ════════════════════════════════════════════════ */
+  const canvas  = document.getElementById('c');
+  const ctx     = canvas.getContext('2d');
+  const overlay = document.getElementById('overlay');
+  const oTitle  = document.getElementById('overlay-title');
+  const oMsg    = document.getElementById('overlay-msg');
+  const oHint   = document.getElementById('overlay-hint');
+  const playBtn = document.getElementById('play-btn');
+  const scoreEl = document.getElementById('score-value');
+  const bestEl  = document.getElementById('best-value');
+
+  canvas.width  = WIDTH;
+  canvas.height = HEIGHT;
+
+  /* ════════════════════════════════════════════════
+     Game state
+     ════════════════════════════════════════════════ */
+  let snake, dir, food, score, best, running, interval, lastTick, animFrame;
+
+  // Shrinking arena bounds: the playable area is [wL, wR) × [wT, wB)
+  let wL, wT, wR, wB;          // wall left, top, right, bottom
+  let lastShrinkScore;          // score at which we last shrank
+  let shrinkFlash;              // timestamp of last shrink (for visual flash)
+
+  // Input queue: buffers up to 2 pending turns so rapid
+  // corner inputs (e.g. Down→Left within one tick) are
+  // never dropped and 180° reversals are still blocked.
+  let inputQueue;
+
+  best = +(localStorage.getItem('snake_best') || 0);
+  bestEl.textContent = best;
+
+  /* ════════════════════════════════════════════════
+     Helpers
+     ════════════════════════════════════════════════ */
+  const rand = n => Math.floor(Math.random() * n);
+  const lerp = (a, b, t) => a + (b - a) * t;
+  const isOpposite = (a, b) => a.x === -b.x && a.y === -b.y;
+
+  /** Spawn food on a random cell inside the live arena, not occupied by the snake. */
+  function spawnFood() {
+    const occupied = new Set(snake.map(s => `${s.x},${s.y}`));
+    const free = [];
+    for (let y = wT; y < wB; y++)
+      for (let x = wL; x < wR; x++)
+        if (!occupied.has(`${x},${y}`)) free.push({ x, y });
+    if (free.length === 0) return;
+    food = free[rand(free.length)];
+  }
+
+  /** Shrink the arena by 1 cell on each side, kill snake if it's now in the dead zone. */
+  function tryShrink() {
+    const arenaW = wR - wL, arenaH = wB - wT;
+    if (arenaW <= MIN_ARENA || arenaH <= MIN_ARENA) return;
+    wL++; wT++; wR--; wB--;
+    shrinkFlash = performance.now();
+    // Kill any snake segment now outside the arena
+    if (snake.some(s => s.x < wL || s.x >= wR || s.y < wT || s.y >= wB)) {
+      return gameOver();
+    }
+    // If food is now in dead zone, respawn it
+    if (food && (food.x < wL || food.x >= wR || food.y < wT || food.y >= wB)) {
+      spawnFood();
+    }
+  }
+
+  /**
+   * Queue a direction change.
+   * Compares against the most-recently-queued direction (or the
+   * current dir if the queue is empty) so that two rapid presses
+   * in one tick (e.g. Down then Left) both register correctly
+   * while still preventing 180° reversal.
+   */
+  function queueDir(d) {
+    if (inputQueue.length >= 2) return;     // cap buffer size
+    const ref = inputQueue.length > 0
+      ? inputQueue[inputQueue.length - 1]
+      : dir;
+    if (!isOpposite(d, ref) && (d.x !== ref.x || d.y !== ref.y)) {
+      inputQueue.push(d);
+    }
+  }
+
+  /* ════════════════════════════════════════════════
+     Drawing
+     ════════════════════════════════════════════════ */
+  function drawGrid() {
+    ctx.strokeStyle = 'rgba(255,255,255,0.03)';
+    ctx.lineWidth = 1;
+    for (let x = 0; x <= COLS; x++) {
+      ctx.beginPath();
+      ctx.moveTo(x * CELL, 0);
+      ctx.lineTo(x * CELL, HEIGHT);
+      ctx.stroke();
+    }
+    for (let y = 0; y <= ROWS; y++) {
+      ctx.beginPath();
+      ctx.moveTo(0, y * CELL);
+      ctx.lineTo(WIDTH, y * CELL);
+      ctx.stroke();
+    }
+  }
+
+  function drawCell(x, y, color, glow, r = 4) {
+    const px = x * CELL, py = y * CELL;
+    if (glow) { ctx.shadowColor = glow; ctx.shadowBlur = 12; }
+    ctx.fillStyle = color;
+    ctx.beginPath();
+    ctx.roundRect(px + 1, py + 1, CELL - 2, CELL - 2, r);
+    ctx.fill();
+    ctx.shadowBlur = 0;
+  }
+
+  function snakeColor(i, len) {
+    const t = len > 1 ? i / (len - 1) : 0;
+    return `rgb(${Math.round(lerp(110,16,t))},${Math.round(lerp(231,185,t))},${Math.round(lerp(183,129,t))})`;
+  }
+
+  /** Draw the dead-zone cells outside the current arena bounds. */
+  function drawDeadZone() {
+    if (wL === 0 && wT === 0 && wR === COLS && wB === ROWS) return;
+    // Pulsing danger border
+    const pulse = 0.4 + 0.3 * Math.sin(performance.now() / 300);
+    for (let y = 0; y < ROWS; y++) {
+      for (let x = 0; x < COLS; x++) {
+        if (x >= wL && x < wR && y >= wT && y < wB) continue;
+        const px = x * CELL, py = y * CELL;
+        // Brick pattern
+        ctx.fillStyle = '#1a0a0e';
+        ctx.fillRect(px, py, CELL, CELL);
+        ctx.strokeStyle = `rgba(180, 40, 60, ${(0.15 + 0.1 * pulse).toFixed(2)})`;
+        ctx.lineWidth = 0.5;
+        ctx.strokeRect(px + 0.5, py + 0.5, CELL - 1, CELL - 1);
+        // If this cell is on the inner edge, draw a brighter highlight
+        const onEdge = (x === wL - 1 || x === wR || y === wT - 1 || y === wB);
+        if (onEdge) {
+          ctx.fillStyle = `rgba(255, 50, 80, ${(0.12 * pulse).toFixed(2)})`;
+          ctx.fillRect(px, py, CELL, CELL);
+        }
+      }
+    }
+  }
+
+  function draw() {
+    // Shake effect on shrink
+    let sx = 0, sy = 0;
+    if (shrinkFlash) {
+      const elapsed = performance.now() - shrinkFlash;
+      if (elapsed < 300) {
+        const intensity = (1 - elapsed / 300) * 4;
+        sx = Math.round((Math.random() - 0.5) * intensity);
+        sy = Math.round((Math.random() - 0.5) * intensity);
+      } else {
+        shrinkFlash = 0;
+      }
+    }
+
+    ctx.save();
+    ctx.translate(sx, sy);
+
+    ctx.fillStyle = '#0f1322';
+    ctx.fillRect(-2, -2, WIDTH + 4, HEIGHT + 4);
+    drawGrid();
+    drawDeadZone();
+
+    // Shrink flash overlay
+    if (shrinkFlash) {
+      const elapsed = performance.now() - shrinkFlash;
+      if (elapsed < 200) {
+        ctx.fillStyle = `rgba(255, 50, 80, ${(0.12 * (1 - elapsed / 200)).toFixed(2)})`;
+        ctx.fillRect(0, 0, WIDTH, HEIGHT);
+      }
+    }
+
+    // Food (pulsing glow)
+    if (food) {
+      const pulse = 0.6 + 0.4 * Math.sin(performance.now() / 200);
+      drawCell(food.x, food.y, '#ff5c87',
+        `rgba(255,92,135,${(0.5 * pulse).toFixed(2)})`, 6);
+    }
+
+    // Snake segments (tail-to-head so head draws on top)
+    for (let i = snake.length - 1; i >= 0; i--) {
+      const s = snake[i];
+      drawCell(s.x, s.y, snakeColor(i, snake.length),
+        i === 0 ? 'rgba(110,231,183,.4)' : null,
+        i === 0 ? 6 : 4);
+    }
+
+    // Eyes
+    const h = snake[0];
+    const cx = h.x * CELL + CELL / 2;
+    const cy = h.y * CELL + CELL / 2;
+    const ex = dir.x * 3, ey = dir.y * 3;
+    ctx.fillStyle = '#0f1322';
+    ctx.beginPath(); ctx.arc(cx - 3 + ex, cy - 3 + ey, 2, 0, 6.3); ctx.fill();
+    ctx.beginPath(); ctx.arc(cx + 3 + ex, cy - 3 + ey, 2, 0, 6.3); ctx.fill();
+
+    ctx.restore();
+  }
+
+  /* ════════════════════════════════════════════════
+     Game loop
+     ════════════════════════════════════════════════ */
+  function tick() {
+    // Consume one buffered input
+    if (inputQueue.length > 0) dir = inputQueue.shift();
+
+    const head = { x: snake[0].x + dir.x, y: snake[0].y + dir.y };
+
+    // Wall collision — uses dynamic shrinking bounds
+    if (head.x < wL || head.x >= wR || head.y < wT || head.y >= wB)
+      return gameOver();
+
+    // Self collision — exclude the tail tip when NOT eating,
+    // because the tail vacates that cell this tick ("tail chase" is legal).
+    const willEat = food && head.x === food.x && head.y === food.y;
+    const body = willEat ? snake : snake.slice(0, -1);
+    if (body.some(s => s.x === head.x && s.y === head.y))
+      return gameOver();
+
+    snake.unshift(head);
+
+    if (willEat) {
+      score++;
+      scoreEl.textContent = score;
+      if (score > best) {
+        best = score;
+        bestEl.textContent = best;
+        localStorage.setItem('snake_best', best);
+      }
+      interval = Math.max(MIN_INTERVAL, BASE_INTERVAL - score * SPEED_STEP);
+
+      // Shrink arena every SHRINK_EVERY points
+      const shrinkLevel = Math.floor(score / SHRINK_EVERY);
+      if (shrinkLevel > lastShrinkScore) {
+        lastShrinkScore = shrinkLevel;
+        tryShrink();
+        if (!running) return;  // tryShrink may have triggered gameOver
+      }
+
+      spawnFood();
+    } else {
+      snake.pop();
+    }
+  }
+
+  function loop(ts) {
+    if (!running) return;
+    if (ts - lastTick >= interval) { tick(); lastTick = ts; }
+    if (running) draw();
+    animFrame = requestAnimationFrame(loop);
+  }
+
+  function startGame() {
+    // Reset arena to full size
+    wL = 0; wT = 0; wR = COLS; wB = ROWS;
+    lastShrinkScore = 0;
+    shrinkFlash = 0;
+
+    const cx = Math.floor(COLS / 2), cy = Math.floor(ROWS / 2);
+    snake = [{ x: cx, y: cy }, { x: cx - 1, y: cy }, { x: cx - 2, y: cy }];
+    dir = { x: 1, y: 0 };
+    inputQueue = [];
+    score = 0;
+    scoreEl.textContent = 0;
+    interval = BASE_INTERVAL;
+    spawnFood();
+    running = true;
+    overlay.classList.add('hidden');
+    lastTick = performance.now();
+    animFrame = requestAnimationFrame(loop);
+  }
+
+  function gameOver() {
+    running = false;
+    cancelAnimationFrame(animFrame);
+    const arenaW = wR - wL, arenaH = wB - wT;
+    const crushed = arenaW <= MIN_ARENA || arenaH <= MIN_ARENA;
+    oTitle.textContent = crushed ? '🧊 Crushed!' : 'Game Over';
+    oTitle.className = 'game-over-title';
+    oMsg.innerHTML = `<span class="final-score">${score}</span><br>points`;
+    oHint.textContent = 'Press Space or click Retry';
+    playBtn.textContent = 'Retry';
+    overlay.classList.remove('hidden');
+  }
+
+  /* ════════════════════════════════════════════════
+     Input
+     ════════════════════════════════════════════════ */
+  const DIRS = {
+    ArrowUp:    { x:  0, y: -1 }, KeyW: { x:  0, y: -1 },
+    ArrowDown:  { x:  0, y:  1 }, KeyS: { x:  0, y:  1 },
+    ArrowLeft:  { x: -1, y:  0 }, KeyA: { x: -1, y:  0 },
+    ArrowRight: { x:  1, y:  0 }, KeyD: { x:  1, y:  0 },
+  };
+
+  document.addEventListener('keydown', e => {
+    if (e.code === 'Space') {
+      if (!running) startGame();
+      e.preventDefault();
+      return;
+    }
+    const d = DIRS[e.code];
+    if (d) {
+      if (running) queueDir(d);
+      e.preventDefault();
+    }
+  });
+
+  // Mobile d-pad
+  const mobDirs = {
+    'btn-up':    { x: 0, y:-1 },
+    'btn-down':  { x: 0, y: 1 },
+    'btn-left':  { x:-1, y: 0 },
+    'btn-right': { x: 1, y: 0 },
+  };
+  Object.entries(mobDirs).forEach(([id, d]) => {
+    document.getElementById(id).addEventListener('pointerdown', e => {
+      e.preventDefault();
+      if (running) queueDir(d);
+    });
+  });
+
+  playBtn.addEventListener('click', () => { if (!running) startGame(); });
+
+  /* ════════════════════════════════════════════════
+     Initial idle-screen render
+     ════════════════════════════════════════════════ */
+  wL = 0; wT = 0; wR = COLS; wB = ROWS;
+  lastShrinkScore = 0; shrinkFlash = 0;
+  const cx = Math.floor(COLS / 2), cy = Math.floor(ROWS / 2);
+  snake = [{ x: cx, y: cy }, { x: cx - 1, y: cy }, { x: cx - 2, y: cy }];
+  dir = { x: 1, y: 0 };
+  inputQueue = [];
+  food = { x: cx + 5, y: cy };
+  draw();
+})();
+</script>
+</body>
+</html>
