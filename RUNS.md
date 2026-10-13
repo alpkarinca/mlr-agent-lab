@@ -20,3 +20,14 @@
   - Isolated Python 3.11 environment in `ml-study/.venv` via `uv`.
   - Executed `ml-study/eda_leaves.py` generating high-resolution scatter plot `ml-study/leaves_scatter.png`.
   - Verified exact duplicate detection (26 duplicate rows, 46 total rows involved), 3 conflicting label pairs, and generated comprehensive markdown report `ml-study/eda_report.md`.
+
+## Run 4: ML Study Baseline & Trial Pipeline
+- **Date:** 2026-10-13
+- **Model:** Gemini 3.8 Flash / Antigravity
+- **Prompt:** Propose concrete step-by-step implementation plan for `ml-study/SPEC.md`, update `PLAN.md`, establish ZeroR majority class baseline, and run quick trial model to validate end-to-end evaluation pipeline.
+- **Verification:** 
+  - Installed `scikit-learn==1.9.1` in `ml-study/.venv`.
+  - Implemented and executed `ml-study/trial_run.py` cleanly.
+  - ZeroR baseline recorded: CV Balanced Acc 0.333, CV Macro F1 0.198, Test Macro F1 0.199, Test Acc 0.424.
+  - Trial Logistic Regression recorded: CV Balanced Acc 0.929, CV Macro F1 0.928, Test Macro F1 0.879, Test Acc 0.889.
+  - Results logged to `ml-study/trial_results.json` and updated in `PLAN.md`.
